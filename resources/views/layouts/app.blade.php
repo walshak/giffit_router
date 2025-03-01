@@ -1272,6 +1272,12 @@
                             <i class="fas fa-users me-2"></i> Users
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('userplans') }}"
+                            class="nav-link {{ request()->routeIs('userplans') ? 'active' : '' }}">
+                            <i class="fas fa-database me-2"></i> User Subscriptions
+                        </a>
+                    </li>
                 </ul>
 
                 <!-- Logout Form -->
@@ -1327,9 +1333,9 @@
         });
 
         // Auto-hide alerts after 5 seconds
-        setTimeout(function() {
-            $('.alert').alert('close');
-        }, 5000);
+        // setTimeout(function() {
+        //     $('.alert').alert('close');
+        // }, 20000);
     </script>
 
     @yield('scripts')
