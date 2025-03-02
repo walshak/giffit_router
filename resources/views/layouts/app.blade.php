@@ -1244,7 +1244,7 @@
     @yield('styles')
 </head>
 
-<body class="font-sans antialiased dark:bg-black dark:text-white/50">
+<body class="font-sans antialiased text-xs dark:bg-black dark:text-white/50">
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
