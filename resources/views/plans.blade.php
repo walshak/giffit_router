@@ -21,7 +21,7 @@
                         <th>Name</th>
                         <th>Download Speed</th>
                         <th>Upload Speed</th>
-                        <th>Time Limit</th>
+                        <th>Time Limit(days)</th>
                         <th>Description</th>
                         <th>Actions</th>
                     </tr>
@@ -33,7 +33,7 @@
                         <td>{{ $plan->name }}</td>
                         <td>{{ $plan->download_speed }} Mbps</td>
                         <td>{{ $plan->upload_speed }} Mbps</td>
-                        <td>{{ $plan->time_limit }} hours</td>
+                        <td>{{ $plan->time_limit }} days</td>
                         <td>{{ $plan->desc ?? 'N/A' }}</td>
                         <td>
                             <button class="btn btn-sm btn-info edit-plan-btn"
@@ -93,7 +93,7 @@
                         <input type="number" class="form-control" id="upload_speed" name="upload_speed" min="1" required>
                     </div>
                     <div class="mb-3">
-                        <label for="time_limit" class="form-label">Time Limit (hours)</label>
+                        <label for="time_limit" class="form-label">Time Limit (days)</label>
                         <input type="number" class="form-control" id="time_limit" name="time_limit" min="1" required>
                     </div>
                     <div class="mb-3">
@@ -135,7 +135,7 @@
                         <input type="number" class="form-control" id="edit_upload_speed" name="upload_speed" min="1" required>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_time_limit" class="form-label">Time Limit (hours)</label>
+                        <label for="edit_time_limit" class="form-label">Time Limit (days)</label>
                         <input type="number" class="form-control" id="edit_time_limit" name="time_limit" min="1" required>
                     </div>
                     <div class="mb-3">
