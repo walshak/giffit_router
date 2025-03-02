@@ -1250,7 +1250,7 @@
             <!-- Sidebar -->
             <div class="col-md-2 sidebar py-4 px-0">
                 <div class="text-center mb-4">
-                    <h4>Network Manager</h4>
+                    <h4>Naijalink Network Manager</h4>
                 </div>
                 <ul class="nav flex-column px-3">
                     <li class="nav-item">
