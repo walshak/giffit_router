@@ -35,7 +35,7 @@ class WebNetworkController extends Controller
      */
     public function routers()
     {
-        $routers = Router::latest()->paginate(10);
+        $routers = Router::latest()->paginate(2000);
         return view('routers', compact('routers'));
     }
 
@@ -44,7 +44,7 @@ class WebNetworkController extends Controller
      */
     public function plans()
     {
-        $plans = Plan::latest()->paginate(10);
+        $plans = Plan::latest()->paginate(2000);
         return view('plans', compact('plans'));
     }
 
@@ -53,7 +53,7 @@ class WebNetworkController extends Controller
      */
     public function users()
     {
-        $users = User::latest()->paginate(10);
+        $users = User::latest()->paginate(2000);
         $plans = Plan::all();
         return view('users', compact('users', 'plans'));
     }
@@ -225,7 +225,7 @@ class WebNetworkController extends Controller
 
     public function userPlansIndex()
     {
-        $userPlans = UserPlan::with(['user', 'plan'])->latest()->paginate(10);
+        $userPlans = UserPlan::with(['user', 'plan'])->latest()->paginate(2000);
         return view('userplans', compact('userPlans'));
     }
 
