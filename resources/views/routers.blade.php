@@ -234,28 +234,28 @@
             }
         });
 
-        // Success notification handling
-        if (sessionStorage.getItem('router_action_success')) {
-            const message = sessionStorage.getItem('router_action_success');
+        // // Success notification handling
+        // if (sessionStorage.getItem('router_action_success')) {
+        //     const message = sessionStorage.getItem('router_action_success');
 
-            // Display success message
-            const alertHtml = `
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            `;
+        //     // Display success message
+        //     const alertHtml = `
+        //         <div class="alert alert-success alert-dismissible fade show" role="alert">
+        //             ${message}
+        //             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        //         </div>
+        //     `;
 
-            $('.card-header').after(alertHtml);
+        //     $('.card-header').after(alertHtml);
 
-            // Remove from session storage
-            sessionStorage.removeItem('router_action_success');
+        //     // Remove from session storage
+        //     sessionStorage.removeItem('router_action_success');
 
-            // Auto dismiss after 5 seconds
-            setTimeout(function() {
-                $('.alert').alert('close');
-            }, 5000);
-        }
+        //     // Auto dismiss after 5 seconds
+        //     setTimeout(function() {
+        //         $('.alert').alert('close');
+        //     }, 5000);
+        // }
     });
 </script>
 @endsection

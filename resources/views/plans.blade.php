@@ -234,38 +234,38 @@
             }
         });
 
-        // Display flash messages
-        @if(session('success'))
-            const alertHtml = `
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            `;
+        // // Display flash messages
+        // @if(session('success'))
+        //     const alertHtml = `
+        //         <div class="alert alert-success alert-dismissible fade show" role="alert">
+        //             {{ session('success') }}
+        //             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        //         </div>
+        //     `;
 
-            $('.card-header').after(alertHtml);
+        //     $('.card-header').after(alertHtml);
 
-            // Auto dismiss after 5 seconds
-            setTimeout(function() {
-                $('.alert').alert('close');
-            }, 5000);
-        @endif
+        //     // Auto dismiss after 5 seconds
+        //     setTimeout(function() {
+        //         $('.alert').alert('close');
+        //     }, 5000);
+        // @endif
 
-        @if(session('error'))
-            const errorAlertHtml = `
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            `;
+        // @if(session('error'))
+        //     const errorAlertHtml = `
+        //         <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        //             {{ session('error') }}
+        //             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        //         </div>
+        //     `;
 
-            $('.card-header').after(errorAlertHtml);
+        //     $('.card-header').after(errorAlertHtml);
 
-            // Auto dismiss after 5 seconds
-            setTimeout(function() {
-                $('.alert').alert('close');
-            }, 5000);
-        @endif
+        //     // Auto dismiss after 5 seconds
+        //     setTimeout(function() {
+        //         $('.alert').alert('close');
+        //     }, 5000);
+        // @endif
     });
 </script>
 @endsection
