@@ -296,6 +296,31 @@ class NetworkController extends Controller
     }
 
     /**
+     * Get user by email
+     */
+    public function getUserByEmail(Request $request)
+    {
+        try {
+            $email = $request->input('email');
+
+            if (!$email) {
+                return response()->json(['error' => 'Email is required'], 400);
+            }
+
+            $user = User::where('email', $email)->first();
+
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            return response()->json($user->makeHidden(['password']));
+        } catch (Exception $e) {
+            Log::error("Failed to fetch user by email: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch user'], 500);
+        }
+    }
+
+    /**
      * Add a new user
      */
     public function addUser(Request $request)

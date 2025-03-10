@@ -39,6 +39,7 @@ Route::prefix('network')->group(function () {
     Route::get('/users', [NetworkController::class, 'getUsers']);
     Route::post('/add-user', [NetworkController::class, 'addUser']);
     Route::put('/update-user/{id}', [NetworkController::class, 'updateUser']);
+    Route::get('/users/email', [NetworkController::class, 'getUserByEmail']);
     Route::get('/users/{id}', [NetworkController::class, 'showUser']);
     Route::delete('/delete-user/{id}', [NetworkController::class, 'deleteUser']);
 
