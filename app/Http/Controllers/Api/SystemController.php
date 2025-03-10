@@ -14,7 +14,7 @@ class SystemController extends Controller
         // Initiate client with config object
         $client = new Client([
             'timeout' => 1,
-            'host'    => 'de3b0d91a42f.sn.mynetname.net',
+            'host'    => '10.10.10.2',
             'user'    => 'admin',
             'pass'    => '18781875'
         ]);

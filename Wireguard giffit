@@ -1,0 +1,15 @@
+root@ip-172-31-25-0:/etc/wireguard# cat server_private.key
+
+YKUmqAMH9/ZPseCpyulx3RR9eZEsAH2asFjnE3+xdX8=
+
+root@ip-172-31-25-0:/etc/wireguard# cat server_public.key 
+
+AEJaBcHnBYm4ZC1CmKjVnsQhEa/0r9tkVBRVG74H4zI= root@ip-172-31-25-0:/etc/wireguard# cat router1_private.key 
+
+mIPGqSS9GNJYp2nJ+0V7utx8Du9YHTuo53fFUDacung=
+
+root@ip-172-31-25-0:/etc/wireguard# cat router1_public.key 
+
+6IVbfO1rUf2RpWC2kf5AeCtHE90zbWUnnMxVC4PV/zQ=
+
+
