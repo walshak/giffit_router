@@ -11,6 +11,7 @@ class Plan extends Model
         'desc',
         'upload_speed',
         'download_speed',
-        'time_limit'
+        'time_limit',
+        'price'
     ];
 }

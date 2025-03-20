@@ -22,6 +22,7 @@
                         <th>Download Speed</th>
                         <th>Upload Speed</th>
                         <th>Time Limit(days)</th>
+                        <th>Price</th>
                         <th>Description</th>
                         <th>Actions</th>
                     </tr>
@@ -34,6 +35,7 @@
                         <td>{{ $plan->download_speed }} Mbps</td>
                         <td>{{ $plan->upload_speed }} Mbps</td>
                         <td>{{ $plan->time_limit }} days</td>
+                        <td>{{ $plan->price }}</td>
                         <td>{{ $plan->desc ?? 'N/A' }}</td>
                         <td>
                             <button class="btn btn-sm btn-info edit-plan-btn"
@@ -42,6 +44,7 @@
                                     data-download="{{ $plan->download_speed }}"
                                     data-upload="{{ $plan->upload_speed }}"
                                     data-time="{{ $plan->time_limit }}"
+                                    data-price="{{ $plan->price }}"
                                     data-desc="{{ $plan->desc }}"
                                     data-bs-toggle="modal"
                                     data-bs-target="#editPlanModal">
@@ -97,6 +100,10 @@
                         <input type="number" class="form-control" id="time_limit" name="time_limit" min="1" required>
                     </div>
                     <div class="mb-3">
+                        <label for="price" class="form-label">Price</label>
+                        <input type="number" step="any" class="form-control" id="price" name="price" min="0.00001" required>
+                    </div>
+                    <div class="mb-3">
                         <label for="desc" class="form-label">Description</label>
                         <textarea class="form-control" id="desc" name="desc" rows="3"></textarea>
                     </div>
@@ -137,6 +144,10 @@
                     <div class="mb-3">
                         <label for="edit_time_limit" class="form-label">Time Limit (days)</label>
                         <input type="number" class="form-control" id="edit_time_limit" name="time_limit" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_price" class="form-label">Price</label>
+                        <input type="number" step="any" class="form-control" id="edit_price" name="price" min="0.00001" required>
                     </div>
                     <div class="mb-3">
                         <label for="edit_desc" class="form-label">Description</label>
@@ -188,12 +199,14 @@
             const download = $(this).data('download');
             const upload = $(this).data('upload');
             const time = $(this).data('time');
+            const price = $(this).data('price');
             const desc = $(this).data('desc');
 
             $('#edit_name').val(name);
             $('#edit_download_speed').val(download);
             $('#edit_upload_speed').val(upload);
             $('#edit_time_limit').val(time);
+            $('#edit_price').val(price);
             $('#edit_desc').val(desc);
 
             $('#editPlanForm').attr('action', '/plans/' + id);
@@ -233,39 +246,6 @@
                 e.preventDefault();
             }
         });
-
-        // // Display flash messages
-        // @if(session('success'))
-        //     const alertHtml = `
-        //         <div class="alert alert-success alert-dismissible fade show" role="alert">
-        //             {{ session('success') }}
-        //             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        //         </div>
-        //     `;
-
-        //     $('.card-header').after(alertHtml);
-
-        //     // Auto dismiss after 5 seconds
-        //     setTimeout(function() {
-        //         $('.alert').alert('close');
-        //     }, 5000);
-        // @endif
-
-        // @if(session('error'))
-        //     const errorAlertHtml = `
-        //         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        //             {{ session('error') }}
-        //             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        //         </div>
-        //     `;
-
-        //     $('.card-header').after(errorAlertHtml);
-
-        //     // Auto dismiss after 5 seconds
-        //     setTimeout(function() {
-        //         $('.alert').alert('close');
-        //     }, 5000);
-        // @endif
     });
 </script>
 @endsection

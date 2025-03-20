@@ -127,6 +127,7 @@ class WebNetworkController extends Controller
             'upload_speed' => 'required|integer|min:1',
             'download_speed' => 'required|integer|min:1',
             'time_limit' => 'required|integer|min:1',
+            'price' => 'required'
         ]);
 
         Plan::create($validated);
@@ -147,6 +148,7 @@ class WebNetworkController extends Controller
             'upload_speed' => 'integer|min:1',
             'download_speed' => 'integer|min:1',
             'time_limit' => 'integer|min:1',
+            'price' => 'numeric'
         ]);
 
         $plan->update($validated);

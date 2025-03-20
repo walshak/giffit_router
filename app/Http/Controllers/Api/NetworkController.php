@@ -15,6 +15,7 @@ use \RouterOS\Query;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use RouterOS\Config;
 
 class NetworkController extends Controller
@@ -174,6 +175,7 @@ class NetworkController extends Controller
                 'upload_speed' => 'required|integer|min:1',
                 'download_speed' => 'required|integer|min:1',
                 'time_limit' => 'required|integer|min:1',
+                'price' => 'required|numeric'
             ]);
 
             if ($validator->fails()) {
@@ -220,6 +222,7 @@ class NetworkController extends Controller
                 'upload_speed' => 'integer|min:1',
                 'download_speed' => 'integer|min:1',
                 'time_limit' => 'integer|min:1',
+                'price' => 'numeric'
             ]);
 
             if ($validator->fails()) {
@@ -420,7 +423,7 @@ class NetworkController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'user_id' => 'required|exists:users,id',
+                'user_identifier' => 'required',
                 'plan_id' => 'required|exists:plans,id',
                 'start_date' => 'required|date|after_or_equal:today',
                 'payment_status' => 'required|in:pending,completed',
@@ -430,8 +433,22 @@ class NetworkController extends Controller
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            $user = User::findOrFail($request->user_id);
+            // Find user by ID or email
+            $user = null;
+            if (is_numeric($request->user_identifier)) {
+                $user = User::find($request->user_identifier);
+            } else {
+                $user = User::where('email', $request->user_identifier)->first();
+            }
+
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+
             $plan = Plan::findOrFail($request->plan_id);
+
+            DB::beginTransaction();
 
             // Create user plan subscription record
             $userPlan = UserPlan::create([
@@ -514,10 +531,11 @@ class NetworkController extends Controller
             if (!empty($failedRouters)) {
                 $response['warnings'] = "Failed to configure on routers: " . implode(', ', $failedRouters);
             }
-
+            DB::commit();
             return response()->json($response);
         } catch (Exception $e) {
-            Log::error("Failed to subscribe user to plan: " . $e->getMessage());
+            Log::error("Failed to subscribe user to plan: " . $e->getMessage(), [$e]);
+            DB::rollBack();
             return response()->json([
                 'error' => 'Failed to subscribe user to plan',
                 'details' => $e->getMessage()
