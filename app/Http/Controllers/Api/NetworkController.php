@@ -15,9 +15,11 @@ use \RouterOS\Query;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Exception;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use RouterOS\Config;
+use Illuminate\Support\Str;
 
 class NetworkController extends Controller
 {
@@ -300,7 +302,10 @@ class NetworkController extends Controller
     }
 
     /**
-     * Get user by email
+     * Get user by email with plain password
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function getUserByEmail(Request $request)
     {
@@ -317,11 +322,30 @@ class NetworkController extends Controller
                 return response()->json(['error' => 'User not found'], 404);
             }
 
-            return response()->json($user->makeHidden(['password']));
+            // Method to retrieve or generate plain text password
+            $plainPassword = $this->getPlainTextPassword($user);
+
+            return response()->json(array_merge($user->toArray(), [
+                'plain_password' => $plainPassword
+            ]));
         } catch (Exception $e) {
             Log::error("Failed to fetch user by email: " . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch user'], 500);
         }
+    }
+
+    /**
+     * Retrieve or generate a plain text password for a user
+     *
+     * @param User $user
+     * @return string
+     */
+    private function getPlainTextPassword($user)
+    {
+        // Encrypt and store the password
+        $plainPassword = Crypt::decryptString($user->password);
+
+        return $plainPassword; // Return the plain password
     }
 
     /**
@@ -345,7 +369,7 @@ class NetworkController extends Controller
 
             $user = User::create([
                 'username' => $request->username,
-                'password' => Hash::make($request->password),
+                'password' => Crypt::encryptString($request->password),
                 'email' => $request->email,
                 'name' => $request->name,
                 'phone' => $request->phone,
@@ -383,7 +407,7 @@ class NetworkController extends Controller
             }
 
             if ($request->filled('password')) {
-                $request->merge(['password' => Hash::make($request->password)]);
+                $request->merge(['password' => Crypt::encryptString($request->password)]);
             }
 
             $user->update($request->all());
@@ -440,8 +464,41 @@ class NetworkController extends Controller
                 ? User::find($request->user_identifier)
                 : User::where('email', $request->user_identifier)->first();
 
+
+            $plainPassword = null;
+
             if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
+                // Generate a unique username
+                $baseUsername = strtolower(explode('@', $request->email)[0]);
+                $username = $baseUsername;
+                $counter = 1;
+                while (User::where('username', $username)->exists()) {
+                    $username = $baseUsername . $counter;
+                    $counter++;
+                }
+
+                // Generate a random password
+                $plainPassword = Str::random(6);
+
+                $user = User::create([
+                    'username' => $username,
+                    'password' => Crypt::encryptString($request->password),
+                    'email' => $request->email,
+                    'name' => $request->email, // Use email as default name
+                    'status' => 'active'
+                ]);
+            } else {
+                // For existing users, use the provided password or retrieve the existing one
+                $plainPassword = $request->password ?? $this->getPlainTextPassword($user);
+
+                // If no password was provided, regenerate
+                if (!$plainPassword) {
+                    $plainPassword = Str::random(6);
+                }
+
+                // Update user's password if a new one was provided or generated
+                $user->password = Hash::make($plainPassword);
+                $user->save();
             }
 
             $plan = Plan::findOrFail($request->plan_id);
@@ -458,7 +515,7 @@ class NetworkController extends Controller
                 'payment_status' => $request->payment_status,
             ]);
 
-            // Call Giffitech API to deduct points
+            //Call Giffitech API to deduct points
             $giffitResponse = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer ' . $request->giffit_api_user_key
@@ -511,18 +568,19 @@ class NetworkController extends Controller
                         $updateQuery = (new Query('/ip/hotspot/user/set'))
                             ->equal('.id', $exists[0]['.id'])
                             ->equal('profile', $plan->name)
+                            ->equal('password', $user->password)
                             ->equal('limit-uptime', "{$plan->time_limit}d");
                         $client->query($updateQuery);
                     } else {
                         $addQuery = (new Query('/ip/hotspot/user/add'))
                             ->equal('name', $user->username)
-                            ->equal('password', $request->password)
+                            ->equal('password', $user->password)
                             ->equal('profile', $plan->name)
                             ->equal('limit-uptime', "{$plan->time_limit}d");
                         $client->query($addQuery)->read();
                     }
 
-                    $currrent_user = $client->query((new Query('/ip/hotspot/user/print'))->where('name', $user->username))->read();
+                    $current_user = $client->query((new Query('/ip/hotspot/user/print'))->where('name', $user->username))->read();
                     Log::info("User {$user->username} configured on router {$router->name}");
                 } catch (Exception $e) {
                     Log::error("Failed to configure user on router {$router->name}: " . $e->getMessage());
@@ -537,8 +595,11 @@ class NetworkController extends Controller
 
             return response()->json([
                 'message' => 'User subscription processed',
+                'user' => array_merge($user->toArray(), [
+                    'plain_password' => $plainPassword
+                ]),
                 'user_plan' => $userPlan,
-                'router_user' => $currrent_user,
+                'router_user' => $current_user,
                 'warnings' => !empty($failedRouters) ? "Failed to configure on routers: " . implode(', ', $failedRouters) : null
             ]);
         } catch (Exception $e) {
