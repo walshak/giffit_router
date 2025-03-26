@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use RouterOS\Config;
 
 class NetworkController extends Controller
@@ -427,6 +428,7 @@ class NetworkController extends Controller
                 'plan_id' => 'required|exists:plans,id',
                 'start_date' => 'required|date|after_or_equal:today',
                 'payment_status' => 'required|in:pending,completed',
+                'giffit_api_user_key' => 'required'
             ]);
 
             if ($validator->fails()) {
@@ -434,17 +436,13 @@ class NetworkController extends Controller
             }
 
             // Find user by ID or email
-            $user = null;
-            if (is_numeric($request->user_identifier)) {
-                $user = User::find($request->user_identifier);
-            } else {
-                $user = User::where('email', $request->user_identifier)->first();
-            }
+            $user = is_numeric($request->user_identifier)
+                ? User::find($request->user_identifier)
+                : User::where('email', $request->user_identifier)->first();
 
             if (!$user) {
                 return response()->json(['error' => 'User not found'], 404);
             }
-
 
             $plan = Plan::findOrFail($request->plan_id);
 
@@ -460,12 +458,31 @@ class NetworkController extends Controller
                 'payment_status' => $request->payment_status,
             ]);
 
+            // Call Giffitech API to deduct points
+            $giffitResponse = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $request->giffit_api_user_key
+            ])->post('https://api.giffitech.com.ng/points/v2/utility/pay-internet.php', [
+                'email' => $user->email,
+                'amount' => $plan->price,
+                'description' => "Paid {$plan->price} for {$plan->name} wifi plan"
+            ]);
+
+            if (!$giffitResponse->successful()) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Payment failed on Giffitech API',
+                    'details' => $giffitResponse->json()
+                ], 500);
+            }
+
+            // Configure user on MikroTik routers (Existing logic)
             $failedRouters = [];
             $routers = Router::all();
+            $currrent_user = null;
 
             foreach ($routers as $router) {
                 try {
-                    // Create MikroTik client
                     $config = (new Config())
                         ->set('host', $router->ip_address)
                         ->set('port', $router->port)
@@ -474,34 +491,29 @@ class NetworkController extends Controller
 
                     $client = new Client($config);
 
-                    // Check if profile exists
+                    // Ensure profile exists
                     $profileQuery = (new Query('/ip/hotspot/user/profile/print'))
                         ->where('name', $plan->name);
                     $profileExists = $client->query($profileQuery)->read();
 
-
                     if (empty($profileExists)) {
-                        // Create profile if not exists
                         $profileCreateQuery = (new Query('/ip/hotspot/user/profile/add'))
                             ->equal('name', $plan->name)
                             ->equal('rate-limit', "{$plan->download_speed}M/{$plan->upload_speed}M");
-                        $t = $client->query($profileCreateQuery)->read();
+                        $client->query($profileCreateQuery)->read();
                     }
 
-                    // Check if user exists
-                    $checkQuery = (new Query('/ip/hotspot/user/print'))
-                        ->where('name', $user->username);
+                    // Configure user on MikroTik
+                    $checkQuery = (new Query('/ip/hotspot/user/print'))->where('name', $user->username);
                     $exists = $client->query($checkQuery)->read();
 
                     if (!empty($exists)) {
-                        // Update existing user
                         $updateQuery = (new Query('/ip/hotspot/user/set'))
                             ->equal('.id', $exists[0]['.id'])
                             ->equal('profile', $plan->name)
                             ->equal('limit-uptime', "{$plan->time_limit}d");
                         $client->query($updateQuery);
                     } else {
-                        // Add new user
                         $addQuery = (new Query('/ip/hotspot/user/add'))
                             ->equal('name', $user->username)
                             ->equal('password', $request->password)
@@ -509,12 +521,11 @@ class NetworkController extends Controller
                             ->equal('limit-uptime', "{$plan->time_limit}d");
                         $client->query($addQuery)->read();
                     }
-                    $checkQuery2 = (new Query('/ip/hotspot/user/print'))
-                        ->where('name', $user->username);
-                    $currrent_user = $client->query($checkQuery2)->read();
+
+                    $currrent_user = $client->query((new Query('/ip/hotspot/user/print'))->where('name', $user->username))->read();
                     Log::info("User {$user->username} configured on router {$router->name}");
                 } catch (Exception $e) {
-                    Log::error("Failed to configure user on router {$router->name}: " . $e->getMessage(), [$e]);
+                    Log::error("Failed to configure user on router {$router->name}: " . $e->getMessage());
                     $failedRouters[] = $router->name;
                 }
             }
@@ -522,19 +533,16 @@ class NetworkController extends Controller
             $user->plan_id = $plan->id;
             $user->save();
 
-            $response = [
+            DB::commit();
+
+            return response()->json([
                 'message' => 'User subscription processed',
                 'user_plan' => $userPlan,
-                'router_user' => $currrent_user
-            ];
-
-            if (!empty($failedRouters)) {
-                $response['warnings'] = "Failed to configure on routers: " . implode(', ', $failedRouters);
-            }
-            DB::commit();
-            return response()->json($response);
+                'router_user' => $currrent_user,
+                'warnings' => !empty($failedRouters) ? "Failed to configure on routers: " . implode(', ', $failedRouters) : null
+            ]);
         } catch (Exception $e) {
-            Log::error("Failed to subscribe user to plan: " . $e->getMessage(), [$e]);
+            Log::error("Failed to subscribe user to plan: " . $e->getMessage());
             DB::rollBack();
             return response()->json([
                 'error' => 'Failed to subscribe user to plan',
