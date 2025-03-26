@@ -469,7 +469,7 @@ class NetworkController extends Controller
 
             if (!$user) {
                 // Generate a unique username
-                $baseUsername = strtolower(explode('@', $request->email)[0]);
+                $baseUsername = strtolower(explode('@', $request->user_identifier)[0]);
                 $username = $baseUsername;
                 $counter = 1;
                 while (User::where('username', $username)->exists()) {
@@ -483,8 +483,8 @@ class NetworkController extends Controller
                 $user = User::create([
                     'username' => $username,
                     'password' => Crypt::encryptString($request->password),
-                    'email' => $request->email,
-                    'name' => $request->email, // Use email as default name
+                    'email' => $request->user_identifier,
+                    'name' => $request->user_identifier, // Use email as default name
                     'status' => 'active'
                 ]);
             } else {
