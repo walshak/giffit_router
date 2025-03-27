@@ -364,13 +364,10 @@ class NetworkController extends Controller
     private function getPlainTextPassword($user)
     {
         // Encrypt and store the password
-        $plainPassword = '';
 
-        if (empty($plainPassword)) {
-            $plainPassword = Str::random(6);
-            $user->password = Crypt::encryptString($plainPassword);
-            $user->save();
-        }
+        $plainPassword = Str::random(6);
+        $user->password = Crypt::encryptString($plainPassword);
+        $user->save();
 
         return $plainPassword; // Return the plain password
     }
