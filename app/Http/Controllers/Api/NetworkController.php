@@ -549,7 +549,7 @@ class NetworkController extends Controller
             ])->post('https://api.giffitech.com.ng/points/v2/utility/pay-internet.php', [
                 'email' => $user->email,
                 'amount' => $plan->price,
-                'description' => "Paid {$plan->price} for {$plan->name} wifi plan"
+                'description' => "Paid {$plan->price} for {$plan->name} wifi plan valid for {$plan->time_limit} days with bandwith of {$plan->upload_speed}M/{$plan->download_speed}M"
             ]);
 
             if (!$giffitResponse->successful()) {
