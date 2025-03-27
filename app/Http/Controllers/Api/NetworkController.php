@@ -623,7 +623,7 @@ class NetworkController extends Controller
                     'plain_password' => $plainPassword
                 ]),
                 'user_plan' => $userPlan,
-                'router_user' => $current_user,
+                'router_user' => $current_user ?? null,
                 'warnings' => !empty($failedRouters) ? "Failed to configure on routers: " . implode(', ', $failedRouters) : null
             ]);
         } catch (Exception $e) {
