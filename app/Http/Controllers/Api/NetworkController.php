@@ -630,7 +630,7 @@ class NetworkController extends Controller
                 'warnings' => !empty($failedRouters) ? "Failed to configure on routers: " . implode(', ', $failedRouters) : null
             ]);
         } catch (Exception $e) {
-            Log::error("Failed to subscribe user to plan: " . $e->getMessage());
+            Log::error("Failed to subscribe user to plan: " . $e->getMessage(), [$e]);
             DB::rollBack();
             return response()->json([
                 'error' => 'Failed to subscribe user to plan',
