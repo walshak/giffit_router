@@ -319,11 +319,32 @@ class NetworkController extends Controller
             $user = User::where('email', $email)->first();
 
             if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
+                // Generate a unique username
+                $baseUsername = strtolower(explode('@', $request->email)[0]);
+                $username = $baseUsername;
+                $counter = 1;
+                while (User::where('username', $username)->exists()) {
+                    $username = $baseUsername . $counter;
+                    $counter++;
+                }
+
+                // Generate a random password
+                $plainPassword = Str::random(6);
+
+                $user = User::create([
+                    'username' => $username,
+                    'password' => Crypt::encryptString($request->password),
+                    'email' => $request->email,
+                    'name' => $baseUsername,
+                    'status' => 'active'
+                ]);
+            } else {
+                // Method to retrieve or generate plain text password
+                // dd($user);
+                $plainPassword = $this->getPlainTextPassword($user);
             }
 
-            // Method to retrieve or generate plain text password
-            $plainPassword = $this->getPlainTextPassword($user);
+
 
             return response()->json(array_merge($user->toArray(), [
                 'plain_password' => $plainPassword
@@ -344,6 +365,12 @@ class NetworkController extends Controller
     {
         // Encrypt and store the password
         $plainPassword = Crypt::decryptString($user->password);
+
+        if (empty($plainPassword)) {
+            $plainPassword = Str::random(6);
+            $user->password = Crypt::encryptString($plainPassword);
+            $user->save();
+        }
 
         return $plainPassword; // Return the plain password
     }
