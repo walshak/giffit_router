@@ -364,7 +364,7 @@ class NetworkController extends Controller
     private function getPlainTextPassword($user)
     {
         // Encrypt and store the password
-        $plainPassword = Crypt::decryptString($user->password);
+        $plainPassword = '';
 
         if (empty($plainPassword)) {
             $plainPassword = Str::random(6);
@@ -516,7 +516,7 @@ class NetworkController extends Controller
                 ]);
             } else {
                 // For existing users, use the provided password or retrieve the existing one
-                $plainPassword = $request->password ?? $this->getPlainTextPassword($user);
+                $plainPassword = $this->getPlainTextPassword($user);
 
                 // If no password was provided, regenerate
                 if (!$plainPassword) {
