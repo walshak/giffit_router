@@ -20,7 +20,9 @@ class UserPlan extends Model
         'payment_reference',
         'last_renewal_date',
         'auto_renewal',
-        'notes'
+        'notes',
+        'hotspot_username',
+        'hotspot_password'
     ];
 
     protected $casts = [
