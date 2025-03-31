@@ -479,23 +479,23 @@ class NetworkController extends Controller
                 ])
             ]);
 
-            //Call Giffitech API to deduct points
-            $giffitResponse = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $request->giffit_api_user_key
-            ])->post('https://api.giffitech.com.ng/points/v2/utility/pay-internet.php', [
-                'email' => $user->email,
-                'amount' => $plan->price,
-                'description' => "Paid {$plan->price} for {$plan->name} wifi plan valid for {$plan->time_limit} days with bandwith of {$plan->upload_speed}M/{$plan->download_speed}M"
-            ]);
+            // //Call Giffitech API to deduct points
+            // $giffitResponse = Http::withHeaders([
+            //     'Content-Type' => 'application/json',
+            //     'Authorization' => 'Bearer ' . $request->giffit_api_user_key
+            // ])->post('https://api.giffitech.com.ng/points/v2/utility/pay-internet.php', [
+            //     'email' => $user->email,
+            //     'amount' => $plan->price,
+            //     'description' => "Paid {$plan->price} for {$plan->name} wifi plan valid for {$plan->time_limit} days with bandwith of {$plan->upload_speed}M/{$plan->download_speed}M"
+            // ]);
 
-            if (!$giffitResponse->successful()) {
-                DB::rollBack();
-                return response()->json([
-                    'error' => 'Payment failed on Giffitech API',
-                    'details' => $giffitResponse->json()
-                ], 500);
-            }
+            // if (!$giffitResponse->successful()) {
+            //     DB::rollBack();
+            //     return response()->json([
+            //         'error' => 'Payment failed on Giffitech API',
+            //         'details' => $giffitResponse->json()
+            //     ], 500);
+            // }
 
             // Configure subscription on MikroTik routers
             $failedRouters = [];
