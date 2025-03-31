@@ -656,7 +656,7 @@ class NetworkController extends Controller
                             'hotspot_password' => decrypt($subscription->hotspot_password),
                             'start_date' => $subscription->start_date,
                             'end_date' => $subscription->end_date,
-                            'days_remaining' => now()->diffInDays(Carbon::parse($subscription->end_date))
+                            'days_remaining' => Carbon::parse($subscription->start_date)->diffInDays(Carbon::parse($subscription->end_date))
                         ];
                     });
             }
