@@ -588,7 +588,7 @@ class NetworkController extends Controller
         // Base format: first part of email + random string + counter if needed
         $baseName = strtolower(explode('@', $user->email)[0]);
         $random = substr(md5(microtime()), 0, 4); // Short random string
-        $username = $baseName . '_' . $random;
+        $username = $baseName . '.' . $random;
 
         // Check if this username exists in any active UserPlan
         $counter = 1;
@@ -596,7 +596,7 @@ class NetworkController extends Controller
             ->where('status', 'active')
             ->exists()
         ) {
-            $username = $baseName . '_' . $random . $counter;
+            $username = $baseName . '.' . $random . $counter;
             $counter++;
         }
 
