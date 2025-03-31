@@ -10,6 +10,7 @@ use App\Models\Router;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserPlan;
+use Carbon\Carbon;
 use \RouterOS\Client;
 use \RouterOS\Query;
 use Illuminate\Support\Facades\Log;
@@ -302,60 +303,6 @@ class NetworkController extends Controller
     }
 
     /**
-     * Get user by email with plain password
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getUserByEmail(Request $request)
-    {
-        try {
-            $email = $request->input('email');
-
-            if (!$email) {
-                return response()->json(['error' => 'Email is required'], 400);
-            }
-
-            $user = User::where('email', $email)->first();
-
-            if (!$user) {
-                // Generate a unique username
-                $baseUsername = strtolower(explode('@', $request->email)[0]);
-                $username = $baseUsername;
-                $counter = 1;
-                while (User::where('username', $username)->exists()) {
-                    $username = $baseUsername . $counter;
-                    $counter++;
-                }
-
-                // Generate a random password
-                $plainPassword = Str::random(6);
-
-                $user = User::create([
-                    'username' => $username,
-                    'password' => Crypt::encryptString($request->password),
-                    'email' => $request->email,
-                    'name' => $baseUsername,
-                    'status' => 'active'
-                ]);
-            } else {
-                // Method to retrieve or generate plain text password
-                // dd($user);
-                $plainPassword = $this->getPlainTextPassword($user);
-            }
-
-
-
-            return response()->json(array_merge($user->toArray(), [
-                'plain_password' => $plainPassword
-            ]));
-        } catch (Exception $e) {
-            Log::error("Failed to fetch user by email: " . $e->getMessage());
-            return response()->json(['error' => 'Failed to fetch user'], 500);
-        }
-    }
-
-    /**
      * Retrieve or generate a plain text password for a user
      *
      * @param User $user
@@ -488,11 +435,9 @@ class NetworkController extends Controller
                 ? User::find($request->user_identifier)
                 : User::where('email', $request->user_identifier)->first();
 
-
-            $plainPassword = null;
-
+            // Create user if they don't exist
             if (!$user) {
-                // Generate a unique username
+                // Generate a unique username for the account (not the plan)
                 $baseUsername = strtolower(explode('@', $request->user_identifier)[0]);
                 $username = $baseUsername;
                 $counter = 1;
@@ -501,35 +446,24 @@ class NetworkController extends Controller
                     $counter++;
                 }
 
-                // Generate a random password
-                $plainPassword = Str::random(6);
-
                 $user = User::create([
                     'username' => $username,
-                    'password' => Crypt::encryptString($request->password),
+                    'password' => Hash::make(Str::random(6)), // Main account password
                     'email' => $request->user_identifier,
                     'name' => $request->user_identifier, // Use email as default name
                     'status' => 'active'
                 ]);
-            } else {
-                // For existing users, use the provided password or retrieve the existing one
-                $plainPassword = $this->getPlainTextPassword($user);
-
-                // If no password was provided, regenerate
-                if (!$plainPassword) {
-                    $plainPassword = Str::random(6);
-                }
-
-                // Update user's password if a new one was provided or generated
-                $user->password = Hash::make($plainPassword);
-                $user->save();
             }
 
             $plan = Plan::findOrFail($request->plan_id);
 
+            // Generate unique hotspot credentials for this subscription
+            $hotspotUsername = $this->generateUniqueHotspotUsername($user);
+            $hotspotPassword = Str::random(6);
+
             DB::beginTransaction();
 
-            // Create user plan subscription record
+            // Create user plan subscription record with unique credentials
             $userPlan = UserPlan::create([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
@@ -537,6 +471,12 @@ class NetworkController extends Controller
                 'end_date' => date('Y-m-d', strtotime($request->start_date . " +{$plan->time_limit} days")),
                 'status' => 'active',
                 'payment_status' => $request->payment_status,
+                'hotspot_username' => $hotspotUsername,
+                'hotspot_password' => encrypt($hotspotPassword),
+                'notes' => json_encode([
+                    'username' => $hotspotUsername,
+                    'password' => $hotspotPassword
+                ])
             ]);
 
             //Call Giffitech API to deduct points
@@ -557,10 +497,10 @@ class NetworkController extends Controller
                 ], 500);
             }
 
-            // Configure user on MikroTik routers (Existing logic)
+            // Configure subscription on MikroTik routers
             $failedRouters = [];
             $routers = Router::all();
-            $currrent_user = null;
+            $currentHotspotUser = null;
 
             foreach ($routers as $router) {
                 try {
@@ -584,46 +524,47 @@ class NetworkController extends Controller
                         $client->query($profileCreateQuery)->read();
                     }
 
-                    // Configure user on MikroTik
-                    $checkQuery = (new Query('/ip/hotspot/user/print'))->where('name', $user->username);
+                    // Configure hotspot user on MikroTik with plan-specific credentials
+                    $checkQuery = (new Query('/ip/hotspot/user/print'))->where('name', $hotspotUsername);
                     $exists = $client->query($checkQuery)->read();
 
                     if (!empty($exists)) {
                         $updateQuery = (new Query('/ip/hotspot/user/set'))
                             ->equal('.id', $exists[0]['.id'])
                             ->equal('profile', $plan->name)
-                            ->equal('password', $user->password)
+                            ->equal('password', $hotspotPassword)
                             ->equal('limit-uptime', "{$plan->time_limit}d");
                         $client->query($updateQuery);
                     } else {
                         $addQuery = (new Query('/ip/hotspot/user/add'))
-                            ->equal('name', $user->username)
-                            ->equal('password', $user->password)
+                            ->equal('name', $hotspotUsername)
+                            ->equal('password', $hotspotPassword)
                             ->equal('profile', $plan->name)
                             ->equal('limit-uptime', "{$plan->time_limit}d");
                         $client->query($addQuery)->read();
                     }
 
-                    $current_user = $client->query((new Query('/ip/hotspot/user/print'))->where('name', $user->username))->read();
-                    Log::info("User {$user->username} configured on router {$router->name}");
+                    $currentHotspotUser = $client->query((new Query('/ip/hotspot/user/print'))->where('name', $hotspotUsername))->read();
+                    Log::info("Hotspot user {$hotspotUsername} configured on router {$router->name}");
                 } catch (Exception $e) {
                     Log::error("Failed to configure user on router {$router->name}: " . $e->getMessage());
                     $failedRouters[] = $router->name;
                 }
             }
 
-            $user->plan_id = $plan->id;
-            $user->save();
-
             DB::commit();
 
             return response()->json([
                 'message' => 'User subscription processed',
-                'user' => array_merge($user->toArray(), [
-                    'plain_password' => $plainPassword
-                ]),
-                'user_plan' => $userPlan,
-                'router_user' => $current_user ?? null,
+                'user' => $user,
+                'subscription' => [
+                    'plan' => $plan->name,
+                    'hotspot_username' => $hotspotUsername,
+                    'hotspot_password' => $hotspotPassword,
+                    'start_date' => $userPlan->start_date,
+                    'end_date' => $userPlan->end_date
+                ],
+                'router_user' => $currentHotspotUser ?? null,
                 'warnings' => !empty($failedRouters) ? "Failed to configure on routers: " . implode(', ', $failedRouters) : null
             ]);
         } catch (Exception $e) {
@@ -633,6 +574,167 @@ class NetworkController extends Controller
                 'error' => 'Failed to subscribe user to plan',
                 'details' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Generate a unique hotspot username based on user account
+     *
+     * @param User $user
+     * @return string
+     */
+    private function generateUniqueHotspotUsername($user)
+    {
+        // Base format: first part of email + random string + counter if needed
+        $baseName = strtolower(explode('@', $user->email)[0]);
+        $random = substr(md5(microtime()), 0, 4); // Short random string
+        $username = $baseName . '_' . $random;
+
+        // Check if this username exists in any active UserPlan
+        $counter = 1;
+        while (UserPlan::where('hotspot_username', $username)
+            ->where('status', 'active')
+            ->exists()
+        ) {
+            $username = $baseName . '_' . $random . $counter;
+            $counter++;
+        }
+
+        return $username;
+    }
+
+    /**
+     * Get user by email with plain password and all active subscriptions
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserByEmail(Request $request)
+    {
+        try {
+            $email = $request->input('email');
+
+            if (!$email) {
+                return response()->json(['error' => 'Email is required'], 400);
+            }
+
+            $user = User::where('email', $email)->first();
+
+            if (!$user) {
+                // Generate a unique username
+                $baseUsername = strtolower(explode('@', $email)[0]);
+                $username = $baseUsername;
+                $counter = 1;
+                while (User::where('username', $username)->exists()) {
+                    $username = $baseUsername . $counter;
+                    $counter++;
+                }
+
+                // Generate a random password
+                $plainPassword = Str::random(6);
+
+                $user = User::create([
+                    'username' => $username,
+                    'password' => Hash::make($plainPassword),
+                    'email' => $email,
+                    'name' => $baseUsername,
+                    'status' => 'active'
+                ]);
+
+                $activeSubscriptions = [];
+            } else {
+                // Get all active subscriptions for this user
+                $activeSubscriptions = UserPlan::where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->where('end_date', '>=', date('Y-m-d'))
+                    ->with('plan')
+                    ->get()
+                    ->map(function ($subscription) {
+                        return [
+                            'plan_name' => $subscription->plan->name,
+                            'hotspot_username' => $subscription->hotspot_username,
+                            'hotspot_password' => decrypt($subscription->hotspot_password),
+                            'start_date' => $subscription->start_date,
+                            'end_date' => $subscription->end_date,
+                            'days_remaining' => now()->diffInDays(Carbon::parse($subscription->end_date))
+                        ];
+                    });
+            }
+
+            return response()->json([
+                'id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'name' => $user->name,
+                'status' => $user->status,
+                'subscriptions' => $activeSubscriptions
+            ]);
+        } catch (Exception $e) {
+            Log::error("Failed to fetch user by email: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch user: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Clean up expired user plans from all routers
+     * This should be run as a scheduled task
+     *
+     * @return void
+     */
+    public function cleanupExpiredPlans()
+    {
+        try {
+            Log::info("Starting cleanup of expired plans");
+
+            // Find all expired plans
+            $expiredPlans = UserPlan::where('end_date', '<', date('Y-m-d'))
+                ->where('status', 'active')
+                ->get();
+
+            Log::info("Found {$expiredPlans->count()} expired plans to clean up");
+
+            // For each expired plan, remove from routers and update status
+            foreach ($expiredPlans as $plan) {
+                // Mark plan as expired in database
+                $plan->status = 'expired';
+                $plan->save();
+
+                // Remove from all routers
+                $routers = Router::all();
+                $username = $plan->hotspot_username;
+
+                foreach ($routers as $router) {
+                    try {
+                        $config = (new Config())
+                            ->set('host', $router->ip_address)
+                            ->set('port', $router->port)
+                            ->set('user', $router->username)
+                            ->set('pass', decrypt($router->password));
+
+                        $client = new Client($config);
+
+                        // Find the user on the router
+                        $checkQuery = (new Query('/ip/hotspot/user/print'))->where('name', $username);
+                        $exists = $client->query($checkQuery)->read();
+
+                        if (!empty($exists)) {
+                            // Remove the user
+                            $removeQuery = (new Query('/ip/hotspot/user/remove'))
+                                ->equal('.id', $exists[0]['.id']);
+                            $client->query($removeQuery)->read();
+                            Log::info("Removed expired hotspot user {$username} from router {$router->name}");
+                        }
+                    } catch (Exception $e) {
+                        Log::error("Failed to remove expired user {$username} from router {$router->name}: " . $e->getMessage());
+                    }
+                }
+            }
+
+            Log::info("Completed cleanup of expired plans");
+            return true;
+        } catch (Exception $e) {
+            Log::error("Error during cleanup of expired plans: " . $e->getMessage());
+            return false;
         }
     }
 
