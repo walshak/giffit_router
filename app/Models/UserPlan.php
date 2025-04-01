@@ -29,7 +29,8 @@ class UserPlan extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'last_renewal_date' => 'date',
-        'auto_renewal' => 'boolean'
+        'auto_renewal' => 'boolean',
+        'notes' => 'array'
     ];
 
     /**
