@@ -648,8 +648,10 @@ class NetworkController extends Controller
                     ->where('status', 'active')
                     ->where('end_date', '>=', date('Y-m-d'))
                     ->with('plan')
-                    ->get()
-                    ->map(function ($subscription) {
+                    ->get();
+
+                if ($activeSubscriptions != null) {
+                    $activeSubscriptions->map(function ($subscription) {
                         return [
                             'plan_name' => $subscription->plan->name,
                             'hotspot_username' => $subscription->hotspot_username,
@@ -659,6 +661,7 @@ class NetworkController extends Controller
                             'days_remaining' => Carbon::parse($subscription->start_date)->diffInDays(Carbon::parse($subscription->end_date))
                         ];
                     });
+                }
             }
 
             return response()->json([
