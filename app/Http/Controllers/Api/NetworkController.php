@@ -472,7 +472,7 @@ class NetworkController extends Controller
                 'status' => 'active',
                 'payment_status' => $request->payment_status,
                 'hotspot_username' => $hotspotUsername,
-                'hotspot_password' => encrypt($hotspotPassword),
+                'hotspot_password' => ($hotspotPassword),
                 'notes' => json_encode([
                     'username' => $hotspotUsername,
                     'password' => $hotspotPassword
@@ -658,7 +658,7 @@ class NetworkController extends Controller
                             return [
                                 'plan_name' => $subscription->plan->name,
                                 'hotspot_username' => $subscription->hotspot_username,
-                                'hotspot_password' => decrypt($subscription->hotspot_password),
+                                'hotspot_password' => ($subscription->hotspot_password),
                                 'hotspot_password_enc' => ($subscription->hotspot_password),
                                 'start_date' => $subscription->start_date,
                                 'end_date' => $subscription->end_date,
