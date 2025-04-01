@@ -651,16 +651,24 @@ class NetworkController extends Controller
                     ->get();
 
                 if ($activeSubscriptions != null) {
-                    $activeSubscriptions->map(function ($subscription) {
-                        return [
-                            'plan_name' => $subscription->plan->name,
-                            'hotspot_username' => $subscription->hotspot_username,
-                            'hotspot_password' => decrypt($subscription->hotspot_password),
-                            'start_date' => $subscription->start_date,
-                            'end_date' => $subscription->end_date,
-                            'days_remaining' => Carbon::parse($subscription->start_date)->diffInDays(Carbon::parse($subscription->end_date))
-                        ];
+                    $activeSubscriptions->map(function ($subscription) use ($user) {
+                        if (isset($subscription->hotspot_username) && isset($subscription->hotspot_password)) {
+
+
+                            return [
+                                'plan_name' => $subscription->plan->name,
+                                'hotspot_username' => $subscription->hotspot_username,
+                                'hotspot_password' => decrypt($subscription->hotspot_password),
+                                'start_date' => $subscription->start_date,
+                                'end_date' => $subscription->end_date,
+                                'days_remaining' => Carbon::parse($subscription->start_date)->diffInDays(Carbon::parse($subscription->end_date))
+                            ];
+                        } else {
+                            $activeSubscriptions = [];
+                        }
                     });
+                } else {
+                    $activeSubscriptions = [];
                 }
             }
 
